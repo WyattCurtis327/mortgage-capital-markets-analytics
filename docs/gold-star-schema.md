@@ -1,27 +1,26 @@
 # Gold star schema — capital markets datamart
 
-Dimensional model for cap-markets reporting on an originate-to-sell mortgage book. Supports the daily desk and the 15-minute agent without mixing grains.
-
-Price convention: **points** (`100` = par).
-
-Full design notes, bus matrix, additivity rules, query patterns, and load sequence: see this file in the repo. DDL: `sql/05_gold_star_ddl.sql`.
+Dimensional model for cap-markets reporting on an originate-to-sell book.
+Runnable DDL: [`sql/05_gold_star_ddl.sql`](../sql/05_gold_star_ddl.sql).
 
 ## Rules
 
 1. One grain per fact.
 2. Conformed dimensions (date, channel, product, purpose, coupon, investor, warehouse, status, ITM).
 3. Semi-additive measures: SUM across locks/coupons on one date; never SUM across dates.
-4. Snapshots freeze the PT used that day.
+4. Snapshots freeze the PT used that day (`pt_forecast`, `pt_grid_as_of_date`).
 5. Hedge P&L at book or coupon grain, not forced onto every lock.
-6. `*_now` tables serve the agent; history lives in snapshot facts.
+6. `fact_lock_now` serves the 15-minute agent. History lives in snapshot facts.
 
-## Facts (grain)
+## Facts
 
 | Fact | Grain |
 |---|---|
 | fact_lock_snapshot_daily | lock × date |
+| fact_lock_now | current lock (type 1) |
 | fact_lock_event | one event |
 | fact_position_daily | date × coupon |
+| fact_position_15m | print × coupon |
 | fact_hedge_snapshot_daily | lot × date |
 | fact_hedge_trade | one fill |
 | fact_tba_mark | date × coupon |
@@ -29,17 +28,16 @@ Full design notes, bus matrix, additivity rules, query patterns, and load sequen
 | fact_warehouse_draw | one draw |
 | fact_loan_fund | funded loan |
 | fact_loan_sale | sold loan |
-| fact_gos | sold loan economics |
+| fact_gos | sold-loan economics |
 | fact_best_ex_quote | loan × route × ts |
 | fact_attribution_daily | date × channel |
 | fact_vintage_l2f | lock month × channel × product × purpose |
-| fact_position_15m | print × coupon |
 
-`fact_lock_snapshot_daily` is the rename of `gold_lock_risk_daily`.
+`fact_lock_snapshot_daily` is the star name for `gold_lock_risk_daily`.
 
 ## Dimensions
 
-dim_date · dim_channel · dim_product · dim_purpose · dim_coupon_bucket · dim_itm_bucket · dim_lock_status · dim_investor · dim_execution_route · dim_warehouse · dim_tba_contract · dim_loan (mini, type 2)
+dim_date · dim_channel · dim_product · dim_purpose · dim_coupon_bucket · dim_itm_bucket · dim_lock_status · dim_investor · dim_execution_route · dim_warehouse (type 2) · dim_tba_contract · dim_loan (mini, type 2)
 
 Degenerate on facts: lock_id, loan_id, trade_id, sale_id, draw_id.
 
@@ -55,4 +53,4 @@ Degenerate on facts: lock_id, loan_id, trade_id, sale_id, draw_id.
 
 ## References
 
-`ref_pullthrough_forecast` and `ref_policy` are not dimensions. Copy applied PT onto the snapshot fact (`pt_forecast`, `pt_grid_as_of_date`).
+`ref_pullthrough_forecast` and `ref_policy` are not dimensions. Copy applied PT onto the snapshot fact.
