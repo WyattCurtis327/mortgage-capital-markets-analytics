@@ -1,15 +1,25 @@
 # SQL pack
 
-Databricks SQL. Deploy in order: `01` → `02` → `05` → `06` → `03` (needs daily snapshot) → `04` job.
+Deploy: `05` → `06` → `01`/`02` → nightly `04` → `03` → examples.
 
-| File | On main |
+| File | What |
 |---|---|
-| [01_origination_kpis.sql](01_origination_kpis.sql) | `gold_lock_asof`, `gold_lock_risk_asof`, `gold_cm_daily_position` |
-| [02_pullthrough_forecast.sql](02_pullthrough_forecast.sql) | **Full** PT grid: resolved locks, shrinkage, beta, live join |
-| [03_pnl_attribution.sql](03_pnl_attribution.sql) | **Full** daily P&L waterfall |
-| [04_daily_merge_job.sql](04_daily_merge_job.sql) | DDL + MERGE contract + gates (stage SQL in local pack) |
-| [05_gold_star_ddl.sql](05_gold_star_ddl.sql) | **Full** star DDL |
-| [06_eligibility_note_structure.sql](06_eligibility_note_structure.sql) | **Full** LLPA + note-structure extension |
+| [01_origination_kpis.sql](01_origination_kpis.sql) | Lock as-of, risk, position |
+| [02_pullthrough_forecast.sql](02_pullthrough_forecast.sql) | Full PT grid |
+| [03_pnl_attribution.sql](03_pnl_attribution.sql) | Full daily waterfall |
+| [04_daily_merge_job.sql](04_daily_merge_job.sql) | MERGE contract + gates |
+| [05_gold_star_ddl.sql](05_gold_star_ddl.sql) | Star DDL |
+| [06_eligibility_note_structure.sql](06_eligibility_note_structure.sql) | LLPA + note structure |
+| [07_reporting_examples.sql](07_reporting_examples.sql) | Desk queries against gold_cm |
 
-Glossary: [docs/glossary.md](../docs/glossary.md) and the long form in the [root README](../README.md#glossary).
-Agent: [docs/agent-15min.md](../docs/agent-15min.md).
+Examples in `07`:
+1. Morning sheet (coverage after SUM)
+2. Coupon coverage drill
+3. Open book by note × ITM
+4. Attribution window
+5. GOS by sale month × channel
+6. Realized L2F
+7. Default-PT leak
+8. Lock eligibility vs current loan
+9. Warehouse utilization
+10. 15-min print vs SOD
