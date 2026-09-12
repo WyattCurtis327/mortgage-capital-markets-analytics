@@ -1,41 +1,40 @@
 # Sample lock tape — report and analyze workflow
 
-File (working copy): `data/sample_lock_pipeline_10k.csv`.
-Grain: one **locked** loan as of 2026-09-11. 10,000 locks, 50% lock-to-fund (5,000 funded, 3,250 sold, 1,750 HFS).
+Working copy: `data/sample_lock_pipeline_10k.csv` plus `data/ref_pullthrough_forecast_sample.csv`.
 
-Never-locked apps are not in this file. App-to-fund 10% is off-file context only.
+## Funding assignment
 
-## Status → book
+- 80% of locks **resolved** by a fair coin: funded vs withdrawn/denied/expired.
+- Realized L2F on resolved ≈ 50% (seed: 3,958 funded / 4,042 fallout).
+- 20% stay **open**. Their PT is a join to `ref_pullthrough_forecast` (`status × channel × purpose × product × ITM`), not an inline rule.
+- Funded PT = 1. Fallout PT = 0.
+- ~65% of funded are sold; rest HFS.
 
-Open locks (locked/approved/ctc/scheduled): PTWLV = UPB × PT.
-HFS (funded): PT = 1.
-Sold: GOS only.
-Fallout/expired: out of the snapshot.
+All-lock funded share ≈ 40% because 20% are still open. Vintage L2F = funded / resolved.
 
-## Load
+## Book rules
+
+Open → PTWLV = UPB × grid PT.
+HFS → PT = 1.
+Sold → GOS only.
+Withdrawn/denied/expired → out.
+
+## Load + rejoin grid
 
 ```sql
 CREATE OR REPLACE TABLE main.silver.sample_lock_pipeline
 USING CSV OPTIONS (header = true, inferSchema = true)
 LOCATION 'dbfs:/FileStore/cm/sample_lock_pipeline_10k.csv';
+
+CREATE OR REPLACE TABLE main.ref_cm.ref_pullthrough_forecast
+USING CSV OPTIONS (header = true, inferSchema = true)
+LOCATION 'dbfs:/FileStore/cm/ref_pullthrough_forecast_sample.csv';
 ```
 
-## Project
+Open-lock `pt_forecast` on the tape should match the grid join on those five keys (`pt_source = leaf`).
 
-Snapshot view: exclude sold/fallout from PTWLV and econ.
-Position: group by `hedge_coupon`.
-Demo hedge: `tba_short = locked_ptwlv + hfs` so coverage = 1.0 until a real blotter exists.
+Demo hedge: short = PTWLV + HFS so coverage = 1.0.
 
-## Reports (sql/07)
+Reports: morning sheet; open book by ITM; L2F on `resolved_ind = 1`; GOS on sold; warehouse on funded/sold.
 
-Morning sheet on the hedged position.
-Open book by channel × product × ITM.
-GOS on `status = sold` only — do not add econ into GOS.
-Warehouse on funded/sold carry columns.
-
-## Still blocked without extra files
-
-Attribution needs a prior-day clone.
-Duration coverage needs EffDur.
-FRED join after `fred_pull.py`.
-15-min agent needs prints.
+Still missing: prior-day snapshot, duration, real TBA shorts, FRED, 15-min prints.
