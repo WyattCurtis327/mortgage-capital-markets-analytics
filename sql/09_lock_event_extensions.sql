@@ -1,0 +1,26 @@
+-- Additive columns on fact_lock_event. Run after sql/05.
+ALTER TABLE main.gold_cm.fact_lock_event ADD COLUMNS (
+  src_system STRING,
+  src_event_id STRING,
+  prior_lock_id STRING,
+  chain_id STRING,
+  event_reason STRING,
+  status_key_before INT,
+  status_key_after INT,
+  upb_before DECIMAL(18,2),
+  upb_after DECIMAL(18,2),
+  note_rate_before DECIMAL(8,4),
+  note_rate_after DECIMAL(8,4),
+  borrower_buy_before DECIMAL(12,6),
+  borrower_buy_after DECIMAL(12,6),
+  lock_net_before DECIMAL(12,6),
+  lock_net_after DECIMAL(12,6),
+  tba_price_at_event DECIMAL(12,6),
+  price_move_at_event DECIMAL(12,6),
+  margin_give_pts DECIMAL(12,6),
+  extension_days INT,
+  soft_fallout_candidate BOOLEAN,
+  soft_fallout_ind BOOLEAN,
+  soft_fallout_econ_ind BOOLEAN,
+  ingested_ts TIMESTAMP
+);

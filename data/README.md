@@ -1,10 +1,11 @@
 # Sample data
 
-`sample_lock_pipeline_10k.csv` — 10,000 locks as of 2026-09-11.
+Local (gitignored): `sample_lock_pipeline_10k.csv`, `sample_lock_event.csv`.
 
-- 80% coin-flip resolved (funded vs withdrawn/denied/expired).
-- 20% open; PT from `ref_pullthrough_forecast_sample.csv`.
-- Realized L2F on resolved ≈ 50%.
-- 30/15 FRM, owner-occupied. PMMS 6.76 / 6.09. CLL $832,750.
+In working copy also: `ref_pullthrough_forecast_sample.csv` (480-cell grid).
 
-Workflow: [docs/sample-reporting-workflow.md](../docs/sample-reporting-workflow.md).
+10,000 locks as of 2026-09-11. 80% coin-resolved (~50% L2F). 20% open on the grid. Events include lock, fund, sale, fallout, renegotiate (~12%), relock, extend. D3 saves pull ex-save L2F to ~37.7%.
+
+PMMS 6.76 / 6.09 (2026-09-10). CLL $832,750. Owner-occupied 30/15 FRM only.
+
+See [docs/sample-reporting-workflow.md](../docs/sample-reporting-workflow.md) and [docs/sample-lock-events.md](../docs/sample-lock-events.md).

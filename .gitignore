@@ -7,3 +7,9 @@ __pycache__/
 .idea/
 .vscode/
 *.log
+
+# Generated sample tapes (local only)
+data/sample_lock_pipeline_10k.csv
+data/sample_lock_event.csv
+data/sample_origination_pipeline_10k.csv
+data/*.csv.gz
