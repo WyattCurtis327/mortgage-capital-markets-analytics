@@ -2,7 +2,7 @@
 
 Plain-language README for how a mortgage capital markets desk works.
 
-The Databricks pack lives in the [root README](../README.md). Terms: [glossary.md](glossary.md).
+The Databricks pack lives in the [root README](../README.md). Desk-precise formulas stay in [glossary.md](glossary.md) and [metrics.md](metrics.md). Definitions a novice needs are in this file.
 
 ## The company you are in
 
@@ -23,52 +23,35 @@ A **lock / IRLC** is: close in 30 days at this rate and these points. From that 
 2. Desk compares investor price vs borrower price — that gap is **locked margin**.
 3. Desk **shorts TBA** MBS so a price drop is offset by the hedge.
 4. Some files never close (**fallout**). Hedge **pull-through-weighted** volume, not every lock dollar.
-5. At closing, draw a **warehouse line**. Loan is **HFS** (held for sale) until delivery.
+5. At closing, draw a **warehouse line**. Loan is **HFS** until delivery.
 6. **Best execution** picks the investor. Sale pays off the warehouse. Remainder is **gain on sale (GOS)**.
 
 ## Pull-through
 
 ```text
 PTWLV = sum of (lock UPB × forecast PT)
-```
-
-A $400,000 lock at 75% PT is $300,000 of hedge. After funding, PT = 1.
-
-```text
 price move = today’s loan price − price at lock
 ```
 
-Positive = market rallied = lock is out of the money for the borrower = PT should fall.
+A $400,000 lock at 75% PT is $300,000 of hedge. After funding, PT = 1.
+Positive price move = market rallied = lock is OTM for the borrower = PT should fall.
 
 ## The hedge
-
-Long locks and HFS, short TBA. Coverage:
 
 ```text
 PT coverage    = TBA short / (PTWLV + HFS)
 Duration cover = hedge DV01 / pipeline DV01
 ```
 
-DV01 = dollars lost if yields rise 1 bp. Policy keeps **net** DV01 small. Hedges miss because of fallout (PT risk), loan vs TBA mismatch (basis), and duration change (convexity).
+DV01 = dollars lost if yields rise 1 bp. Policy keeps **net** DV01 small.
 
-## Warehouse
+## Warehouse, sale, GOS
 
-Nonbanks do not have deposits. A bank line advances most of the UPB at closing. Interest is **carry**. Old loans can fall out of the **borrowing base**. Speed to sale is a cap-markets KPI.
-
-## Sale and GOS
-
-Best ex = route with the most net proceeds after LLPAs, fees, SRP or MSR, and carry.
-
-- Released servicing → cash **SRP**.
-- Retained servicing → keep the **MSR**, less cash.
-
-GOS is sale + SRP/MSR + hedge + interest − warehouse − cuts − fees − LO pay − origination cost.
-
-GOS minus day-one locked margin (after planned costs) is **slippage**. Explain it; do not hide it.
+Nonbanks fund closing on a warehouse line. Carry is interest on that line. Best ex = route with the most net proceeds after LLPAs, fees, SRP or MSR, and carry. GOS minus day-one locked margin (after planned costs) is **slippage**.
 
 ## A day on the desk
 
-Morning: book, coverage, what moved. Intraday: locks/fallout every ~15 minutes, rebalance or move the sheet if TBA jumps. After sale: GOS. After the vintage resolves: lock-to-fund to recalibrate PT — never fit PT on the live open book.
+Morning: book, coverage, what moved. Intraday: locks/fallout ~15 minutes. After sale: GOS. After the vintage resolves: lock-to-fund — never fit PT on the live open book.
 
 ## How this repo maps
 
@@ -78,20 +61,119 @@ Morning: book, coverage, what moved. Intraday: locks/fallout every ~15 minutes, 
 | Why did value move? | `sql/03`, `cm_daily_attribution` |
 | What did we make? | `fact_gos`, `cm_loan_economics` |
 | Is PT believable? | Vintage L2F vs last night’s grid |
-| Intra-day? | 15-min prints, [agent-15min.md](agent-15min.md) |
 
 ```text
 econ = UPB × PT × (today’s net price − borrower price) / 100
 ```
 
-Points: `100` = par. Dollars = `UPB × points / 100`.
+## Glossary
 
-## First vocabulary
+Price unit is **points** (`100` = par). Dollars = `UPB × points / 100`. bps = points × 100.
 
-Lock/IRLC · PT · PTWLV · HFS · TBA · pair-off · warehouse · best ex · GOS · MSR/SRP · slippage
+**Origination.** Building the loan. Capital markets does not take the application.
 
-Full list: [glossary.md](glossary.md). Metrics: [metrics.md](metrics.md).
+**Lock / IRLC.** Promise to the borrower of a rate and points for a stated number of days. Risk starts here.
+
+**Lock desk.** Accepts locks, extensions, renegotiations against the rate sheet.
+
+**Lock period.** Days the rate is guaranteed (15 / 30 / 45 / 60).
+
+**Extension.** Extra lock days. Policy fee vs fee charged is leakage.
+
+**Renegotiation / relock.** Changing the locked rate after the fact. Shrinks day-one margin.
+
+**Fall-in.** A dead lock that comes back.
+
+**Fallout.** The lock never funds.
+
+**Fallout rate.** `1 − PT`. Vintage statistic.
+
+**Fallout P&L.** Book value that disappeared when those locks left. Not the same grain as the rate.
+
+**Channel.** Direct, retail, wholesale/broker, correspondent.
+
+**PPE.** Turns investor bids into the rate the LO sees.
+
+**LOS.** System of record for the file.
+
+**Points.** Percent of UPB. `101.25` is 1.25 above par.
+
+**Par.** Price of 100.
+
+**UPB.** Unpaid principal balance.
+
+**Borrower buy price.** All-in price from the lender’s side of the borrower deal.
+
+**Lock net price.** Best-ex net investor price on lock day.
+
+**Locked margin.** `lock net − borrower buy`. Day-one promise.
+
+**Price move.** Today’s loan price minus lock-day price. Positive = rally = OTM for the borrower.
+
+**ITM / OTM.** In / out of the money *for the borrower*. ITM funds more often.
+
+**LLPA.** Investor price cut for credit, LTV, purpose, occupancy, units.
+
+**G-fee.** Agency guarantee cost.
+
+**Pull-through (PT).** Chance a lock funds. Forecast sizes the hedge.
+
+**PTWLV.** `Σ lock UPB × forecast PT`. Dollars you actually hedge.
+
+**HFS.** Funded, not yet sold. PT = **1**.
+
+**Lock-to-fund (L2F).** Realized PT on a finished vintage. Calibrate here, not on the open book.
+
+**PT beta.** How PT changes when prices move. Expected sign is **negative**.
+
+**Pipeline.** Open locks plus HFS.
+
+**Econ.** `UPB × PT × (today’s net − borrower price) / 100`.
+
+**Pipeline MTM.** `UPB × PT × (today’s price − lock price) / 100`.
+
+**TBA.** Forward on agency MBS. Standard hedge.
+
+**Short TBA.** Makes money when bond prices fall.
+
+**Pair-off.** Buy the TBA back. Short gains if cover < sale price.
+
+**AOT.** Assign the TBA to the investor and deliver loans into it.
+
+**DV01.** Dollars the long book loses if yields rise 1 bp.
+
+**PT coverage.** TBA short ÷ (PTWLV + HFS).
+
+**Duration coverage.** Hedge DV01 ÷ pipeline DV01.
+
+**Offset.** −hedge P&L / (market + PT revision). Target ~ 1.0.
+
+**Basis risk.** Loans did not move with the TBA you shorted.
+
+**Convexity.** Duration shrinks when rates fall and grows when rates rise.
+
+**Warehouse line.** Bank revolver that funds closing until sale.
+
+**Haircut / advance rate.** Share of UPB the line funds.
+
+**Borrowing base.** Loans the warehouse still accepts.
+
+**Warehouse carry.** `UPB × rate × days / 360`.
+
+**Best execution.** Route with the most net money after cuts.
+
+**SRP.** Cash if you sell the servicing.
+
+**MSR.** Asset if you keep servicing.
+
+**Delivery.** Investor pays; warehouse is repaid.
+
+**GOS.** Profit when the loan leaves: sale + SRP or MSR + hedge + interest − warehouse − cuts − fees − LO pay − cost to originate.
+
+**Slippage.** Realized GOS minus locked margin after planned costs.
+
+**EPD.** Delinquent or paid off right after sale. Hits GOS.
 
 ## What this desk is not
 
-Not processing. Not the warehouse credit committee. Not a prop TBA trader. Mandate: transfer rate risk and get paid for manufacturing the loan. Coverage inside the band and GOS near locked margin after honest slippage means the job got done.
+Not processing. Not the warehouse credit committee. Not a prop TBA trader. Mandate: transfer rate risk and get paid for manufacturing the loan.
