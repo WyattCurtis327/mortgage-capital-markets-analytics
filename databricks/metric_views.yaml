@@ -1,0 +1,105 @@
+# Databricks Metric View (Unity Catalog)
+# Deploy as separate metric views — do not mix daily position grain with loan sale grain.
+
+version: 1.0
+
+metric_view: cm_loan_economics
+comment: Realized capital markets economics at funded/sold loan grain
+source: main.gold.gold_loan_gos
+
+dimensions:
+  - name: sale_month
+    expr: DATE_TRUNC('month', sale_date)
+  - name: lock_month
+    expr: DATE_TRUNC('month', lock_date)
+  - name: channel
+    expr: channel
+  - name: product
+    expr: product
+  - name: purpose
+    expr: purpose
+
+measures:
+  - name: sold_upb
+    expr: SUM(funded_upb)
+  - name: gos_usd
+    expr: SUM(realized_gos_usd)
+  - name: gos_bps
+    expr: SUM(realized_gos_usd) / NULLIF(SUM(funded_upb), 0) * 10000
+  - name: locked_margin_bps
+    expr: SUM(funded_upb * locked_margin_pts) / NULLIF(SUM(funded_upb), 0) * 100
+  - name: slippage_bps
+    expr: SUM(funded_upb * gos_slippage_pts) / NULLIF(SUM(funded_upb), 0) * 100
+  - name: hedge_bps
+    expr: SUM(funded_upb * hedge_pairoff_pts) / NULLIF(SUM(funded_upb), 0) * 100
+  - name: carry_bps
+    expr: SUM(funded_upb * warehouse_carry_pts) / NULLIF(SUM(funded_upb), 0) * 100
+  - name: srp_bps
+    expr: SUM(funded_upb * srp_pts) / NULLIF(SUM(funded_upb), 0) * 100
+
+---
+version: 1.0
+
+metric_view: cm_daily_position
+comment: Pipeline and hedge position at as-of date grain
+source: main.gold.gold_cm_daily_position
+
+dimensions:
+  - name: as_of_date
+    expr: as_of_date
+
+measures:
+  - name: locked_upb
+    expr: SUM(locked_upb_gross)
+  - name: ptwlv
+    expr: SUM(locked_ptwlv)
+  - name: hfs_upb
+    expr: SUM(hfs_upb)
+  - name: net_mtm_usd
+    expr: SUM(net_mtm_usd)
+  - name: pt_coverage_pct
+    expr: SUM(tba_short_upb) / NULLIF(SUM(locked_ptwlv + hfs_upb), 0) * 100
+  - name: duration_coverage_pct
+    expr: SUM(hedge_dv01_usd) / NULLIF(SUM(pipeline_dv01_usd), 0) * 100
+  - name: net_dv01_pct
+    expr: SUM(pipeline_dv01_usd - COALESCE(hedge_dv01_usd, 0))
+          / NULLIF(SUM(pipeline_dv01_usd), 0) * 100
+
+---
+version: 1.0
+
+metric_view: cm_daily_attribution
+comment: Day-over-day pipeline and hedge P&L waterfall. Date grain only.
+source: main.gold.gold_pnl_attribution_daily
+
+dimensions:
+  - name: as_of_date
+    expr: as_of_date
+
+measures:
+  - name: econ_sod
+    expr: SUM(econ_sod)
+  - name: econ_eod
+    expr: SUM(econ_eod)
+  - name: pnl_new_locks
+    expr: SUM(pnl_new_locks)
+  - name: pnl_fallout
+    expr: SUM(pnl_fallout)
+  - name: pnl_fund_stepup
+    expr: SUM(pnl_fund_pt_stepup)
+  - name: pnl_market
+    expr: SUM(pnl_market)
+  - name: pnl_pt_revision
+    expr: SUM(pnl_pt_revision)
+  - name: pnl_renego
+    expr: SUM(pnl_renego)
+  - name: pnl_residual
+    expr: SUM(pnl_residual)
+  - name: d_econ
+    expr: SUM(d_econ)
+  - name: hedge_pnl
+    expr: SUM(hedge_pnl_total)
+  - name: net_desk_pnl
+    expr: SUM(net_desk_pnl)
+  - name: hedge_offset_ratio
+    expr: -SUM(hedge_pnl_total) / NULLIF(SUM(pnl_market + pnl_pt_revision), 0)

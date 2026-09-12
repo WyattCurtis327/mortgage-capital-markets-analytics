@@ -1,0 +1,46 @@
+# Databricks Job definition (Jobs UI or DABs)
+# Task graph: pt_rebuild → merge_snapshot → gates_and_print
+# Schedule after LOS lock-status and TBA marks land (typical 7:00-8:00 local).
+
+resources:
+  jobs:
+    cm_daily_snapshot:
+      name: cm_daily_snapshot
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      schedule:
+        quartz_cron_expression: "0 15 7 * * ?"
+        timezone_id: America/Los_Angeles
+      parameters:
+        as_of_date: ""
+        restate_days: "5"
+        catalog: main
+        schema: gold
+      tasks:
+        - task_key: pt_rebuild
+          notebook_task:
+            notebook_path: /Shared/cap_markets/cap_markets_daily_snapshot_job
+            base_parameters:
+              as_of_date: "{{job.parameters.as_of_date}}"
+              restate_days: "{{job.parameters.restate_days}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+        - task_key: merge_snapshot
+          depends_on:
+            - task_key: pt_rebuild
+          sql_task:
+            warehouse_id: "${var.sql_warehouse_id}"
+            file:
+              path: /Workspace/Shared/cap_markets/cap_markets_daily_merge_job.sql
+            parameters:
+              as_of_date: "{{job.parameters.as_of_date}}"
+              restate_days: "{{job.parameters.restate_days}}"
+        - task_key: gates_and_print
+          depends_on:
+            - task_key: merge_snapshot
+          notebook_task:
+            notebook_path: /Shared/cap_markets/cap_markets_daily_snapshot_job
+            base_parameters:
+              as_of_date: "{{job.parameters.as_of_date}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
