@@ -1,10 +1,8 @@
 # Capital Markets Origination Glossary
 
-**Canonical glossary for this pack.** README links here; do not keep a second full copy there.
+**Canonical glossary for this pack.** Price convention is **points** (`100` = par). Dollars = `UPB × points / 100`. Basis points = `points × 100`.
 
-Price convention is **points** (`100` = par). Dollars = `UPB × points / 100`. Basis points = `points × 100`.
-
-Related files: `sql/01` · `02` · `03` · `04` · `05` · `06`.
+Related files: `sql/01`–`08` · `databricks/fred_pull.py` · [docs/README.md](README.md) (novice) · [docs/metrics.md](metrics.md).
 
 ## Sign convention
 
@@ -14,78 +12,96 @@ HFS / funded PT = **1**. Default `0.75` is only for open locks with no grid cell
 
 ## Fallout (two grains)
 
-**Fallout rate** = `1 − PT` (vintage statistic).
+**Fallout rate** = `1 − PT` (vintage). **Fallout P&L** = minus SOD `econ_usd` of locks that left without funding.
 
-**Fallout P&L** = minus SOD `econ_usd` of locks that left the snapshot without funding (attribution bucket).
+## Pair-off and DV01
 
-## Pair-off and DV01 (signed)
+Short pair-off: `notional × (sell_price − cover_price) / 100`. Gain when cover is below the short sale price.
 
-Short pair-off: `realized_pairoff_usd = notional × (sell_price − cover_price) / 100`. Gain when you cover **below** the short sale price.
+DV01 = `PTW UPB × EffDur / 10000` = dollar **loss** on a long mortgage if yields rise 1 bp.
 
-DV01 stored as `PTW UPB × EffDur / 10000` is the **dollar loss** on a long mortgage if yields rise 1 bp. Hedge DV01 is the offsetting short-TBA gain. Policy limits **net** DV01.
+## Status path
 
-## Status path (`dim_lock_status`)
+`locked` < `approved` < `ctc` < `scheduled` < `funded`. Terminal: `fallen_out`, `expired`, `sold`.
 
-`locked` < `approved` < `ctc` < `scheduled` < `funded`. Terminal: `fallen_out`, `expired`, `sold`. Application is LOS workflow, not a lock-status code here.
+## Eligibility and note structure
 
-## Eligibility, note structure, coupon mapping
-
-**Note structure** (`dim_note_structure`): the note on the loan, not the product card. `CONV_30` can close as `FIX_30`, `ARM_5_6_SOFR`, `FIX_30_IO10`, or `FIX_30_BD21`.
-
-**Qualifying rate:** note rate on a standard fixed; ARM qualifying rule on an ARM; usually note (not stepped) rate on a buydown.
-
-**Hedge coupon vs note coupon:** `hedge_coupon_bucket_key` is the TBA you shorted. A 6.125% note often hedges with UMBS 6.0.
-
-**Eligibility snapshot** (`fact_loan_eligibility`): FICO/LTV/CLTV/DTI/occupancy/property/MI/jumbo **as of lock, fund, or sale**. Replay LLPAs from the **lock** row, not current `dim_loan`.
-
-## TBA roll
-
-Moving a short from the front settle month to the next embeds financing (specialness). **Not in v1 facts.** Pair-off cash ≠ roll P&L.
-
-## IRLC FV vs desk econ
-
-Accounting IRLC fair value uses a different cost set than `econ_usd`. Do not reconcile 1:1.
-
-**Bailee:** warehouse/investor letter that the note is held for the line or buyer.
-
-## Warehouse carry
-
-Dollars: `UPB × rate × days / 360`. Points: `rate × days / 360 × 100`. Cheat sheet uses points.
-
-## Slippage
-
-Cheat-sheet **slippage pts** = realized GOS pts − locked margin after planned costs (one number). The waterfall explains that gap. Not two competing GOS figures.
-
-## Metric cheat sheet
-
-| Metric | Formula |
-|---|---|
-| PT volume | funded UPB / locked UPB |
-| PTWLV | Σ UPB × PT̂ |
-| Locked margin | P_lock_net − P_buy |
-| Econ USD | UPB × PT × (P_now − P_buy) / 100 |
-| Pipeline MTM | UPB × PT × (P_now − P_lock) / 100 |
-| DV01 | PTW UPB × EffDur / 10000 |
-| PT coverage | TBA short / (PTWLV + HFS) |
-| Duration coverage | hedge DV01 / pipeline DV01 |
-| Warehouse carry pts | rate × days / 360 × 100 |
-| GOS bps | GOS $ / sold UPB × 10,000 |
-| Slippage pts | realized GOS pts − locked margin after planned costs |
-| Offset | −hedge P&L / (market + PT revision) |
-| EPD rate 90 | EPD UPB / sold UPB |
-
-## ITM buckets
-
-`itm_deep` ≤ −0.75 · `itm` (−0.75, −0.25] · `atm` ± 0.25 · `otm` (+0.25, +0.75] · `otm_deep` > +0.75
-
-## Attribution buckets
-
-New locks · Fallout P&L · Fund PT step-up · Market · PT revision · Renego · UPB change · Residual · Hedge (open mark + pair-off cash)
-
-Offset denominator: market + PT revision only.
+Replay LLPAs from `fact_loan_eligibility` at **lock**. `hedge_coupon_bucket_key` is the TBA you shorted, not always the note coupon.
 
 ## Acronyms
 
-AOT · ARM · CTC · CTAS · EPD · GOS · GSE · HFS · IRLC · IO · LLPA · LO · LOS · MBS · MSR · NIM · OAS · PPE · PT · PTWLV · SRP · TBA · UMBS · UPB
+| Acronym | Meaning |
+|---|---|
+| AOT | assignment of trade |
+| ARM | adjustable-rate mortgage |
+| ATM | at the money (lock vs market, borrower view) |
+| ATR | ability to repay |
+| AUS | automated underwriting system |
+| BPS | basis points (points × 100) |
+| CAC | customer acquisition cost |
+| CDC | change data capture |
+| CLTV | combined loan-to-value |
+| CMT | constant-maturity Treasury |
+| CPR | constant prepayment rate |
+| CTC | clear to close |
+| CTAS | cash to acquire servicing |
+| CTD | cheapest to deliver |
+| DTI | debt-to-income |
+| DVP | delivery versus payment |
+| DV01 | dollar value of a 1 bp yield rise |
+| EOD | end of day |
+| EPD | early payment default (or early payoff) |
+| FHA | Federal Housing Administration |
+| FHLMC | Freddie Mac |
+| FICO | Fair Isaac credit score |
+| FNMA | Fannie Mae |
+| FRM | fixed-rate mortgage |
+| FRED | Federal Reserve Economic Data |
+| FTHB | first-time homebuyer |
+| FV | fair value |
+| GNMA | Ginnie Mae |
+| GOS | gain on sale |
+| GSE | government-sponsored enterprise |
+| HFS | held for sale |
+| IO | interest-only |
+| IRLC | interest rate lock commitment |
+| ITM | in the money (borrower view) |
+| KPI | key performance indicator |
+| L2F | lock-to-fund |
+| LLPA | loan-level price adjustment |
+| LO | loan officer |
+| LOS | loan origination system |
+| LTV | loan-to-value |
+| MBS | mortgage-backed security |
+| MCR | NMLS mortgage call report |
+| MI | mortgage insurance |
+| MIN | MERS mortgage identification number |
+| MISMO | Mortgage Industry Standards Maintenance Organization |
+| MSR | mortgage servicing right |
+| MTM | mark to market |
+| NIM | net interest margin (note vs warehouse while HFS) |
+| NMLS | Nationwide Multistate Licensing System |
+| OAS | option-adjusted spread |
+| OTM | out of the money (borrower view) |
+| P&L | profit and loss |
+| PMMS | Freddie Mac Primary Mortgage Market Survey |
+| PPE | product / pricing / eligibility engine |
+| PSA | PSA prepay curve |
+| PT | pull-through |
+| PTWLV | pull-through-weighted lock volume |
+| QM | qualified mortgage |
+| SIFMA | Securities Industry and Financial Markets Association |
+| SMM | single monthly mortality |
+| SOFR | Secured Overnight Financing Rate |
+| SOD | start of day |
+| SRP | servicing release premium |
+| TBA | to-be-announced agency MBS forward |
+| UC | Unity Catalog |
+| ULDD | Uniform Loan Delivery Dataset |
+| UMBS | Uniform Mortgage-Backed Security |
+| UPB | unpaid principal balance |
+| USDA | USDA rural housing |
+| UW | underwriting / underwriter |
+| VA | Department of Veterans Affairs |
 
-Longer narrative definitions (lock desk, convexity, borrowing base, GOS stack, job spine) are in the working-copy `docs/glossary.md` sections 1–13.
+Term write-ups: working-copy `docs/glossary.md` sections 1–12. Metrics: [metrics.md](metrics.md).
