@@ -1,0 +1,27 @@
+-- Session C — incremental daily snapshot job.
+-- Dialect: Databricks SQL.
+--
+-- Params: as_of_date (default current_date), restate_days (default 5).
+-- Spine = sequence(as_of - restate_days, as_of).
+-- Older partitions stay FROZEN, including the PT used that day.
+--
+-- Steps:
+--   0. job_params, date_spine, gold_cm_job_audit
+--   1. Rebuild ref_pullthrough_forecast (small full refresh)
+--   2. Stage lock risk for every spine date
+--   3. MERGE gold_lock_risk_daily
+--        ON lock_id AND as_of_date
+--        WHEN MATCHED UPDATE / WHEN NOT MATCHED INSERT
+--        WHEN NOT MATCHED BY SOURCE AND as_of_date IN spine THEN DELETE
+--   4. Replace gold_cm_daily_position_tbl partitions on the spine
+--   5. Quality gates → gold_cm_job_audit
+--
+-- Gates (FAIL unless noted):
+--   row_count > 0
+--   default PT share < 20%
+--   no non-positive UPB, PT outside [0.05, 1]
+--   PTWLV shock vs yesterday < 35%
+--   PT coverage 70-120% is WARN only
+--
+-- Backfill: loop as_of_date with restate_days = 0. Do not rebuild 90 days
+-- of history with tonight's PT model.

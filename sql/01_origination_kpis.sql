@@ -1,0 +1,27 @@
+-- Foundation gold views (see README data grains).
+-- Dialect: Databricks SQL.
+-- Full view bodies were developed as cap_markets_origination_kpis.sql.
+--
+-- Silver inputs:
+--   fact_rate_lock, fact_lock_status_hist, fact_lock_event,
+--   fact_funded_loan, fact_loan_sale, fact_warehouse_draw,
+--   fact_hedge_trade, fact_best_ex_quote, ref_tba_market
+--
+-- Gold objects this file is meant to create:
+--   gold_lock_asof              lock_id as of a date (QUALIFY latest status)
+--   gold_lock_risk_asof         + PT, duration, MTM, DV01, econ
+--   gold_cm_daily_position      date-grain coverage and net MTM (view)
+--   gold_vintage_l2f            realized lock-to-fund by vintage x channel
+--   gold_lock_desk_leakage      extension giveaway + renego cost
+--   gold_hfs_carry              warehouse interest and NIM
+--   gold_best_ex_capture        actual route vs model winner
+--   gold_loan_gos               sold-loan GOS and slippage
+--   gold_gos_slippage_waterfall sale month x channel
+--   gold_hedge_effectiveness    day-over-day MTM vs hedge
+--   gold_epd_90                 early payoff / DQ vs sold book
+--
+-- Value:
+--   econ_usd = UPB * PT * (P_now - P_buy) / 100
+--   pipeline_mtm_usd = UPB * PT * (P_now - P_lock) / 100
+--   dv01 = PTW_UPB * EffDur / 10000
+--   pt_coverage = tba_short / (PTWLV + HFS)

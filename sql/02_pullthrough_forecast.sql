@@ -1,0 +1,20 @@
+-- Session A — pull-through forecast grid.
+-- Dialect: Databricks SQL.
+--
+-- Model:
+--   1. Resolve funded vs fallen-out locks (trailing 12 months).
+--   2. Last OPEN status + price_move = P_now - P_lock.
+--   3. Empirical PT by status x channel x purpose x product x ITM bucket.
+--   4. Shrink toward parent: (n*PT_cell + k*PT_parent)/(n+k), k=40, clip [0.05, 0.99].
+--   5. Channel beta = slope(funded_ind, price_move). Expected sign is negative.
+--
+-- Objects:
+--   gold_pt_resolved_locks
+--   gold_pt_cell_raw            leaf + parent levels
+--   gold_pt_cell_shrunk
+--   ref_pullthrough_beta
+--   ref_pullthrough_forecast    published grid for the live join
+--   gold_lock_pt_live           leaf / parent / default source tag
+--
+-- ITM buckets on price_move:
+--   itm_deep <= -0.75 | itm (-0.75,-0.25] | atm ±0.25 | otm (0.25,0.75] | otm_deep > 0.75
